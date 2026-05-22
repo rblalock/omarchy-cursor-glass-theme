@@ -202,43 +202,85 @@ def alpha(h: str, a: float) -> str:
 
 
 def css_for(theme_name: str, p: dict[str, str]) -> str:
-    bg, fg, accent = p["background"], p["foreground"], p["accent"]
+    bg = p["background"]
+    fg = p["foreground"]
+    accent = p["accent"]
     surface = mix(bg, fg, 0.06)
     surface2 = mix(bg, fg, 0.10)
     surface3 = mix(bg, fg, 0.14)
     selection = p["selection_background"]
+
+    # Cursor Agents' Glass UI is translucent by default. For theme fidelity we make
+    # the major app/editor/sidebar surfaces use the theme editor background, and
+    # use a slightly raised surface for rows, cards, tabs, and inputs.
     return f"""{START}
 /* Generated from Omarchy theme: {theme_name} */
 body[data-cursor-glass-mode="true"] {{
   --vscode-foreground: {fg} !important;
   --vscode-descriptionForeground: {alpha(fg, .72)} !important;
   --vscode-editor-background: {bg} !important;
-  --vscode-sideBar-background: {surface} !important;
+  --vscode-editor-foreground: {fg} !important;
+  --vscode-sideBar-background: {bg} !important;
+  --vscode-sideBarSectionHeader-background: {bg} !important;
+  --vscode-sideBarTitle-background: {bg} !important;
+  --vscode-activityBar-background: {bg} !important;
+  --vscode-titleBar-activeBackground: {bg} !important;
+  --vscode-titleBar-inactiveBackground: {bg} !important;
+  --vscode-titleBar-activeForeground: {fg} !important;
+  --vscode-titleBar-inactiveForeground: {alpha(fg, .62)} !important;
   --vscode-input-background: {surface2} !important;
+  --vscode-input-foreground: {fg} !important;
   --vscode-dropdown-background: {surface2} !important;
   --vscode-quickInput-background: {surface2} !important;
-  --vscode-list-activeSelectionBackground: {alpha(selection, .62)} !important;
-  --vscode-list-focusBackground: {alpha(selection, .42)} !important;
-  --vscode-list-hoverBackground: {alpha(fg, .08)} !important;
+  --vscode-editorWidget-background: {surface2} !important;
+  --vscode-editorWidget-border: {alpha(accent, .24)} !important;
+  --vscode-editorGroupHeader-tabsBackground: {bg} !important;
+  --vscode-editorGroupHeader-tabsBorder: {alpha(accent, .18)} !important;
+  --vscode-editorGroup-border: {alpha(accent, .20)} !important;
+  --vscode-editorPane-background: {bg} !important;
+  --vscode-tab-activeBackground: {bg} !important;
+  --vscode-tab-inactiveBackground: {bg} !important;
+  --vscode-tab-hoverBackground: {surface2} !important;
+  --vscode-tab-border: {alpha(accent, .16)} !important;
+  --vscode-breadcrumb-background: {bg} !important;
+  --vscode-breadcrumb-foreground: {alpha(fg, .72)} !important;
+  --vscode-breadcrumb-focusForeground: {fg} !important;
+  --vscode-list-activeSelectionBackground: {surface2} !important;
+  --vscode-list-inactiveSelectionBackground: {surface2} !important;
+  --vscode-list-focusBackground: {surface2} !important;
+  --vscode-list-hoverBackground: {surface2} !important;
   --vscode-button-background: {accent} !important;
   --vscode-button-foreground: {p['selection_foreground']} !important;
+  --vscode-textCodeBlock-background: {bg} !important;
+  --vscode-textPreformat-foreground: {fg} !important;
+  --vscode-diffEditor-insertedLineBackground: {alpha(p['color2'], .28)} !important;
+  --vscode-diffEditor-removedLineBackground: {alpha(p['color1'], .28)} !important;
+  --vscode-terminal-ansiBlack: {p['color0']} !important;
+  --vscode-terminal-ansiRed: {p['color1']} !important;
+  --vscode-terminal-ansiGreen: {p['color2']} !important;
+  --vscode-terminal-ansiYellow: {p['color3']} !important;
+  --vscode-terminal-ansiBlue: {p['color4']} !important;
+  --vscode-terminal-ansiMagenta: {p['color5']} !important;
+  --vscode-terminal-ansiCyan: {p['color6']} !important;
+  --vscode-terminal-ansiWhite: {p['color7']} !important;
   --cursor-text-primary: {fg} !important;
   --cursor-text-secondary: {alpha(fg, .74)} !important;
   --cursor-text-tertiary: {alpha(fg, .54)} !important;
   --cursor-text-quaternary: {alpha(fg, .36)} !important;
-  --cursor-bg-primary: {alpha(fg, .16)} !important;
+  --cursor-bg-primary: {alpha(fg, .14)} !important;
   --cursor-bg-secondary: {surface2} !important;
   --cursor-bg-tertiary: {surface} !important;
-  --cursor-bg-quaternary: {alpha(fg, .07)} !important;
+  --cursor-bg-quaternary: {surface2} !important;
   --cursor-bg-elevated: {surface2} !important;
-  --cursor-bg-active: {alpha(selection, .62)} !important;
-  --cursor-bg-focused: {alpha(selection, .42)} !important;
-  --cursor-stroke-primary: {alpha(accent, .38)} !important;
-  --cursor-stroke-secondary: {alpha(accent, .25)} !important;
-  --cursor-stroke-tertiary: {alpha(fg, .11)} !important;
+  --cursor-bg-active: {surface2} !important;
+  --cursor-bg-focused: {surface2} !important;
+  --cursor-stroke-primary: {alpha(accent, .34)} !important;
+  --cursor-stroke-secondary: {alpha(accent, .22)} !important;
+  --cursor-stroke-tertiary: {alpha(fg, .10)} !important;
   --cursor-stroke-focused: {accent} !important;
   --cursor-icon-primary: {fg} !important;
   --cursor-icon-secondary: {alpha(fg, .72)} !important;
+  --cursor-icon-tertiary: {alpha(fg, .48)} !important;
   --cursor-icon-accent-primary: {accent} !important;
   --cursor-accent: {accent} !important;
   --cursor-blue: {p['color4']} !important;
@@ -248,22 +290,138 @@ body[data-cursor-glass-mode="true"] {{
   --cursor-red: {p['color1']} !important;
   --cursor-magenta: {p['color5']} !important;
   --cursor-purple: {p['color5']} !important;
-  --glass-chat-bubble-background: {alpha(surface3, .82)} !important;
-  --glass-background: {alpha(bg, .82)} !important;
+  --glass-chat-bubble-background: {alpha(surface3, .88)} !important;
+  --glass-background: {bg} !important;
+  --glass-sidebar-surface-background: {bg} !important;
 }}
+
+/* App shell, titlebar, main agent, and opened editor panels. */
+body[data-cursor-glass-mode="true"],
+body[data-cursor-glass-mode="true"] .monaco-workbench,
+body[data-cursor-glass-mode="true"] .part.titlebar,
+body[data-cursor-glass-mode="true"] .titlebar,
+body[data-cursor-glass-mode="true"] .titlebar-container,
+body[data-cursor-glass-mode="true"] .window-title,
+body[data-cursor-glass-mode="true"] [class*="titlebar"],
+body[data-cursor-glass-mode="true"] .part.editor,
+body[data-cursor-glass-mode="true"] .part.editor > .content,
+body[data-cursor-glass-mode="true"] .content,
+body[data-cursor-glass-mode="true"] .split-view-view,
 body[data-cursor-glass-mode="true"] [data-component="agent-panel"],
-body[data-cursor-glass-mode="true"] .composer-messages-container {{ color: {fg} !important; }}
+body[data-cursor-glass-mode="true"] [class*="agent-panel"],
+body[data-cursor-glass-mode="true"] [class*="composer-container"],
+body[data-cursor-glass-mode="true"] [class*="composer-panel"],
+body[data-cursor-glass-mode="true"] .composer-messages-container,
+body[data-cursor-glass-mode="true"] .editor-group-container,
+body[data-cursor-glass-mode="true"] .editor-group-container > .title,
+body[data-cursor-glass-mode="true"] .editor-group-container > .title .tabs-and-actions-container,
+body[data-cursor-glass-mode="true"] .editor-group-container > .title .tabs-container,
+body[data-cursor-glass-mode="true"] .editor-group-container > .editor-container,
+body[data-cursor-glass-mode="true"] .editor-instance,
+body[data-cursor-glass-mode="true"] .monaco-editor,
+body[data-cursor-glass-mode="true"] .monaco-editor .overflow-guard,
+body[data-cursor-glass-mode="true"] .monaco-editor-background,
+body[data-cursor-glass-mode="true"] .monaco-editor .margin,
+body[data-cursor-glass-mode="true"] .breadcrumbs-control,
+body[data-cursor-glass-mode="true"] .breadcrumbs-breadcrumbs,
+body[data-cursor-glass-mode="true"] [class*="editor-pane"],
+body[data-cursor-glass-mode="true"] [class*="editor-container"],
+body[data-cursor-glass-mode="true"] [class*="markdown-preview"],
+body[data-cursor-glass-mode="true"] [class*="markdownPreview"] {{
+  background-color: {bg} !important;
+  color: {fg} !important;
+}}
+
+/* Left sidebar/activity surfaces. */
+body[data-cursor-glass-mode="true"] .glass-sidebar-docked,
+body[data-cursor-glass-mode="true"] .glass-sidebar-overlay,
+body[data-cursor-glass-mode="true"] .ui-sidebar,
+body[data-cursor-glass-mode="true"] .part.activitybar,
+body[data-cursor-glass-mode="true"] .activitybar,
+body[data-cursor-glass-mode="true"] .part.sidebar,
+body[data-cursor-glass-mode="true"] .sidebar,
+body[data-cursor-glass-mode="true"] .sidebar > .content,
+body[data-cursor-glass-mode="true"] .composite.title,
+body[data-cursor-glass-mode="true"] .composite-bar,
+body[data-cursor-glass-mode="true"] .pane-composite-part,
+body[data-cursor-glass-mode="true"] .pane-composite-part > .content,
+body[data-cursor-glass-mode="true"] .auxiliarybar,
+body[data-cursor-glass-mode="true"] [id*="workbench.parts.sidebar"],
+body[data-cursor-glass-mode="true"] .agent-sidebar,
+body[data-cursor-glass-mode="true"] .agent-sidebar-body,
+body[data-cursor-glass-mode="true"] .agent-sidebar-sections,
+body[data-cursor-glass-mode="true"] .agent-sidebar-section {{
+  background-color: {bg} !important;
+  background: {bg} !important;
+}}
+
+/* Shadcn-style Agent sidebar groups/menus should not paint their own rectangular islands. */
+body[data-cursor-glass-mode="true"] .ui-sidebar-group,
+body[data-cursor-glass-mode="true"] .ui-sidebar-group-content,
+body[data-cursor-glass-mode="true"] .ui-sidebar-menu,
+body[data-cursor-glass-mode="true"] .ui-sidebar-menu-item,
+body[data-cursor-glass-mode="true"] .glass-sidebar-agent-list-container {{
+  background-color: transparent !important;
+  background: transparent !important;
+}}
+
+/* Shadcn-style Agent sidebar rows: background only on the outer button. */
+body[data-cursor-glass-mode="true"] .ui-sidebar-menu-button,
+body[data-cursor-glass-mode="true"] .glass-sidebar-agent-menu-btn {{
+  background-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}}
+body[data-cursor-glass-mode="true"] .ui-sidebar-menu-button[data-active="true"],
+body[data-cursor-glass-mode="true"] .ui-sidebar-menu-button[data-highlighted="true"],
+body[data-cursor-glass-mode="true"] .ui-sidebar-menu-button[data-unread="true"],
+body[data-cursor-glass-mode="true"] .ui-sidebar-menu-button:hover,
+body[data-cursor-glass-mode="true"] .glass-sidebar-agent-menu-btn[data-active="true"],
+body[data-cursor-glass-mode="true"] .glass-sidebar-agent-menu-btn[data-highlighted="true"],
+body[data-cursor-glass-mode="true"] .glass-sidebar-agent-menu-btn[data-unread="true"],
+body[data-cursor-glass-mode="true"] .glass-sidebar-agent-menu-btn:hover {{
+  background-color: {surface2} !important;
+  background: {surface2} !important;
+  border-radius: 8px !important;
+}}
+body[data-cursor-glass-mode="true"] .ui-sidebar-menu-button > *,
+body[data-cursor-glass-mode="true"] .ui-sidebar-menu-button > * *,
+body[data-cursor-glass-mode="true"] .glass-sidebar-agent-menu-btn > *,
+body[data-cursor-glass-mode="true"] .glass-sidebar-agent-menu-btn > * * {{
+  background-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}}
+
+/* Raised surfaces: composer input, cards, active tabs/toolbars, code blocks. */
 body[data-cursor-glass-mode="true"] .ui-prompt-input__container,
-body[data-cursor-glass-mode="true"] .composer-human-message.standalone-glass {{
-  background-color: {alpha(surface2, .78)} !important;
+body[data-cursor-glass-mode="true"] .composer-human-message.standalone-glass,
+body[data-cursor-glass-mode="true"] .composer-code-block-content,
+body[data-cursor-glass-mode="true"] .markdown-block-code,
+body[data-cursor-glass-mode="true"] .markdown-block-code-slash-edit,
+body[data-cursor-glass-mode="true"] .editor-group-container > .title .tab.active,
+body[data-cursor-glass-mode="true"] .editor-group-container > .title .tab:hover,
+body[data-cursor-glass-mode="true"] .monaco-toolbar,
+body[data-cursor-glass-mode="true"] .action-toolbar,
+body[data-cursor-glass-mode="true"] [class*="toolbar"],
+body[data-cursor-glass-mode="true"] [class*="action-bar"] {{
+  background-color: {surface2} !important;
   border-color: {alpha(accent, .30)} !important;
 }}
-body[data-cursor-glass-mode="true"] .agent-sidebar-new-agent-button,
-body[data-cursor-glass-mode="true"] .agent-sidebar-new-cloud-agent-button,
-body[data-cursor-glass-mode="true"] .chat-title-tab-row__new-agent:hover {{ background-color: {alpha(accent, .18)} !important; }}
+body[data-cursor-glass-mode="true"] .markdown-code-block-header,
+body[data-cursor-glass-mode="true"] .markdown-section-toolbar,
+body[data-cursor-glass-mode="true"] .markdown-section-toolbar-internal {{
+  background-color: {surface2} !important;
+  color: {alpha(fg, .78)} !important;
+  border-color: {alpha(accent, .22)} !important;
+}}
+body[data-cursor-glass-mode="true"] .cursor-inline-code,
+body[data-cursor-glass-mode="true"] .markdown-section .markdown-inline-code {{
+  background-color: {alpha(surface2, .92)} !important;
+  color: {fg} !important;
+}}
 {END}
 """
-
 
 def sudo_prefix(non_interactive: bool) -> list[str]:
     return ["sudo", "-n"] if non_interactive else ["sudo"]
