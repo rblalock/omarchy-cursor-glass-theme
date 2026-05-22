@@ -10,19 +10,13 @@ This is intentionally focused on **Cursor Agents only**. It does not try to them
 
 ## Status / warning
 
-This installs a one-time CSS loader into Cursor's installed CSS bundle:
+This direct-patches Cursor's installed CSS bundle:
 
 ```text
 /usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.css
 ```
 
-The loader imports a user-writable file:
-
-```text
-~/.config/omarchy/cursor-agent.css
-```
-
-After the loader is installed, Omarchy theme changes only regenerate the user CSS file and do not need sudo.
+During install, the script grants your user write access to that CSS file with `setfacl` so Omarchy theme hooks can update the patch without prompting for sudo each time.
 
 Cursor may show a warning in the editor app saying the installation appears corrupt while the loader is installed. Restore the original Cursor CSS with:
 
@@ -43,8 +37,8 @@ cd cursor-omarchy-theme
 The installer:
 
 1. Installs `~/.local/bin/cursor-omarchy-agent-theme`
-2. Adds the one-time Cursor CSS loader, using sudo
-3. Generates `~/.config/omarchy/cursor-agent.css` from the current Omarchy theme
+2. Grants your user write access to Cursor's CSS bundle, using sudo
+3. Direct-patches Cursor Agents Glass CSS from the current Omarchy theme
 4. Hooks into `~/.config/omarchy/hooks/theme-set`
 
 After install, fully quit and relaunch Cursor Agents.
@@ -98,7 +92,7 @@ So when you run:
 omarchy theme set Kanagawa
 ```
 
-Cursor Agent CSS is regenerated for that theme. Relaunch Cursor Agents to pick it up.
+Cursor Agents CSS is direct-patched for that theme. Relaunch Cursor Agents to pick it up.
 
 ## Theme support
 
@@ -143,18 +137,14 @@ body[data-cursor-glass-mode="true"] .ui-prompt-input__container
 body[data-cursor-glass-mode="true"] .composer-human-message.standalone-glass
 ```
 
-The one-time loader inserted into Cursor's CSS looks like:
-
-```css
-@import url("file:///home/YOU/.config/omarchy/cursor-agent.css");
-```
+The patch is inserted between clear markers in Cursor's CSS bundle and replaced on each theme change.
 
 ## For your agent
 
 Copy/paste this to a coding agent on an Omarchy machine:
 
 ```text
-Install a Cursor Agents Omarchy theme patcher. Create ~/.local/bin/cursor-omarchy-agent-theme as an executable Python 3 script with commands apply [theme], install-loader, install-hook, status, and restore. It should read the current Omarchy theme via `omarchy theme current`, locate the theme under ~/.config/omarchy/themes or ~/.local/share/omarchy/themes, read colors.toml with fallbacks from waybar.css and hyprland.conf, then generate ~/.config/omarchy/cursor-agent.css targeting only Cursor Agents / Glass UI selectors like body[data-cursor-glass-mode="true"], [data-component="agent-panel"], .composer-messages-container, .ui-prompt-input__container, and .composer-human-message.standalone-glass. Install a one-time @import loader near the top of /usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.css, backing up the original file first. Add a hook to ~/.config/omarchy/hooks/theme-set that runs `cursor-omarchy-agent-theme apply "$1" || true`. Do not edit Cursor user settings or VS Code theme settings. Provide restore to restore the backup. Tell me to fully quit and relaunch Cursor Agents after applying.
+Install a Cursor Agents Omarchy theme patcher. Create ~/.local/bin/cursor-omarchy-agent-theme as an executable Python 3 script with commands apply [theme], install-loader, install-hook, status, and restore. It should read the current Omarchy theme via `omarchy theme current`, locate the theme under ~/.config/omarchy/themes or ~/.local/share/omarchy/themes, read colors.toml with fallbacks from waybar.css and hyprland.conf, then direct-patch /usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.css between clear markers with CSS targeting only Cursor Agents / Glass UI selectors like body[data-cursor-glass-mode="true"], [data-component="agent-panel"], .composer-messages-container, .ui-prompt-input__container, and .composer-human-message.standalone-glass. Back up the original file first and use setfacl to grant the current user write access so future theme changes do not need sudo. Add a hook to ~/.config/omarchy/hooks/theme-set that runs `cursor-omarchy-agent-theme apply "$1" || true`. Do not edit Cursor user settings or VS Code theme settings. Provide restore to restore the backup. Tell me to fully quit and relaunch Cursor Agents after applying.
 ```
 
 ## Uninstall
@@ -169,10 +159,4 @@ Remove the script:
 
 ```bash
 rm -f ~/.local/bin/cursor-omarchy-agent-theme
-```
-
-Optionally remove the generated user CSS:
-
-```bash
-rm -f ~/.config/omarchy/cursor-agent.css
 ```

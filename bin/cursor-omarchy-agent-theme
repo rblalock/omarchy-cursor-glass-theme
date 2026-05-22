@@ -332,11 +332,19 @@ def loader_installed() -> bool:
     return CURSOR_CSS.exists() and LOADER_START in CURSOR_CSS.read_text(errors="ignore")
 
 
-def apply(theme: str | None, non_interactive: bool, direct: bool) -> None:
-    if not direct and loader_installed():
-        generate_user_css(theme)
-        print("Fully quit/relaunch Cursor Agents to see changes.")
+def grant_write_access(non_interactive: bool) -> None:
+    """Allow the current user to update Cursor's CSS so Omarchy hooks can run without sudo."""
+    if os.access(CURSOR_CSS, os.W_OK):
+        print(f"Current user can already write {CURSOR_CSS}")
         return
+    user = os.environ.get("SUDO_USER") or os.environ.get("USER") or subprocess.check_output(["id", "-un"], text=True).strip()
+    run(sudo_prefix(non_interactive) + ["setfacl", "-m", f"u:{user}:rw", str(CURSOR_CSS)])
+    print(f"Granted write access on Cursor CSS to user '{user}'.")
+
+
+def apply(theme: str | None, non_interactive: bool, direct: bool = True) -> None:
+    # Direct patch is intentional. A file:// @import loader was tested and Electron did not
+    # reliably load it for Cursor Agents. Direct patching is the working path.
     theme_name = theme or current_theme()
     theme_dir = find_theme_dir(theme_name)
     if not theme_dir:
@@ -344,9 +352,10 @@ def apply(theme: str | None, non_interactive: bool, direct: bool) -> None:
     ensure_backup(non_interactive)
     original = CURSOR_CSS.read_text(errors="ignore")
     original = remove_marked(original, START, END)
+    original = remove_marked(original, LOADER_START, LOADER_END)
     block = css_for(theme_dir.name, read_palette(theme_dir))
     write_root_file(CURSOR_CSS, original.rstrip() + "\n\n" + block.strip() + "\n", non_interactive)
-    print(f"Direct-patched Cursor Agents Glass theme from Omarchy theme '{theme_dir.name}'.")
+    print(f"Applied Cursor Agents Glass theme from Omarchy theme '{theme_dir.name}'.")
     print("Fully quit/relaunch Cursor Agents to see changes.")
 
 
@@ -406,8 +415,10 @@ def main() -> int:
     p_apply.add_argument("theme", nargs="?")
     p_apply.add_argument("--non-interactive", action="store_true")
     p_apply.add_argument("--direct", action="store_true", help="Patch Cursor CSS directly instead of writing user CSS")
-    p_loader = sub.add_parser("install-loader", help="Install one-time Cursor CSS @import loader")
+    p_loader = sub.add_parser("install-loader", help="Deprecated: direct patching is used; removes old loader on next apply")
     p_loader.add_argument("--non-interactive", action="store_true")
+    p_grant = sub.add_parser("grant-write-access", help="Allow theme hook to patch Cursor CSS without sudo")
+    p_grant.add_argument("--non-interactive", action="store_true")
     sub.add_parser("install-hook", help="Run apply after omarchy theme set")
     p_restore = sub.add_parser("restore", help="Restore Cursor CSS from backup")
     p_restore.add_argument("--non-interactive", action="store_true")
@@ -416,7 +427,9 @@ def main() -> int:
     if args.cmd == "apply":
         apply(args.theme, args.non_interactive, args.direct)
     elif args.cmd == "install-loader":
-        install_loader(args.non_interactive)
+        print("install-loader is deprecated; use apply/grant-write-access instead.")
+    elif args.cmd == "grant-write-access":
+        grant_write_access(args.non_interactive)
     elif args.cmd == "install-hook":
         install_hook()
     elif args.cmd == "restore":
