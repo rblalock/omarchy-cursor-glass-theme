@@ -270,7 +270,7 @@ body[data-cursor-glass-mode="true"] {{
   --cursor-bg-primary: {alpha(fg, .14)} !important;
   --cursor-bg-secondary: {surface2} !important;
   --cursor-bg-tertiary: {surface} !important;
-  --cursor-bg-quaternary: {surface2} !important;
+  --cursor-bg-quaternary: {surface3} !important;
   --cursor-bg-elevated: {surface2} !important;
   --cursor-bg-active: {surface2} !important;
   --cursor-bg-focused: {surface2} !important;
@@ -418,6 +418,51 @@ body[data-cursor-glass-mode="true"] .markdown-section-toolbar-internal {{
 body[data-cursor-glass-mode="true"] .cursor-inline-code,
 body[data-cursor-glass-mode="true"] .markdown-section .markdown-inline-code {{
   background-color: {alpha(surface2, .92)} !important;
+  color: {fg} !important;
+}}
+
+/* Composer/context menus: menu surface and focused/selected row must differ. */
+body[data-cursor-glass-mode="true"] .ui-menu,
+body[data-cursor-glass-mode="true"] .ui-menu__content,
+body[data-cursor-glass-mode="true"] .ui-menu__list,
+body[data-cursor-glass-mode="true"] [role="menu"],
+body[data-cursor-glass-mode="true"] [role="listbox"] {{
+  background-color: {surface2} !important;
+  background: {surface2} !important;
+  color: {fg} !important;
+}}
+body[data-cursor-glass-mode="true"] .ui-menu__row:hover,
+body[data-cursor-glass-mode="true"] .ui-menu__row[data-focused="true"],
+body[data-cursor-glass-mode="true"] .ui-menu__row[data-selected="true"],
+body[data-cursor-glass-mode="true"] .ui-menu__row[data-active="true"],
+body[data-cursor-glass-mode="true"] .ui-menu__row[data-highlighted="true"],
+body[data-cursor-glass-mode="true"] .ui-menu__row[aria-selected="true"],
+body[data-cursor-glass-mode="true"] .ui-menu__row[aria-checked="true"],
+body[data-cursor-glass-mode="true"] .ui-menu__row:has([data-selected="true"]),
+body[data-cursor-glass-mode="true"] .ui-menu__row:has([data-active="true"]),
+body[data-cursor-glass-mode="true"] .ui-menu__row:has([data-highlighted="true"]),
+body[data-cursor-glass-mode="true"] .ui-menu__row:has([aria-selected="true"]),
+body[data-cursor-glass-mode="true"] .ui-menu__row:has([aria-checked="true"]),
+body[data-cursor-glass-mode="true"] [role="menuitem"]:hover,
+body[data-cursor-glass-mode="true"] [role="menuitem"][data-focused="true"],
+body[data-cursor-glass-mode="true"] [role="menuitem"][data-active="true"],
+body[data-cursor-glass-mode="true"] [role="menuitem"][data-highlighted="true"],
+body[data-cursor-glass-mode="true"] [role="menuitem"][aria-checked="true"],
+body[data-cursor-glass-mode="true"] [role="option"]:hover,
+body[data-cursor-glass-mode="true"] [role="option"][data-focused="true"],
+body[data-cursor-glass-mode="true"] [role="option"][data-active="true"],
+body[data-cursor-glass-mode="true"] [role="option"][data-highlighted="true"],
+body[data-cursor-glass-mode="true"] [role="option"][aria-selected="true"] {{
+  background-color: {surface3} !important;
+  background: {surface3} !important;
+  color: {fg} !important;
+}}
+body[data-cursor-glass-mode="true"] .ui-menu__row:hover *,
+body[data-cursor-glass-mode="true"] .ui-menu__row[data-focused="true"] *,
+body[data-cursor-glass-mode="true"] .ui-menu__row[data-active="true"] *,
+body[data-cursor-glass-mode="true"] .ui-menu__row[data-highlighted="true"] *,
+body[data-cursor-glass-mode="true"] .ui-menu__row:has([data-active="true"]) *,
+body[data-cursor-glass-mode="true"] .ui-menu__row:has([aria-selected="true"]) * {{
   color: {fg} !important;
 }}
 {END}
