@@ -29,8 +29,8 @@ Cursor updates may overwrite the patch. Re-run `./install.sh` after Cursor updat
 ## Install
 
 ```bash
-git clone https://github.com/YOUR_USER/cursor-omarchy-theme.git
-cd cursor-omarchy-theme
+git clone https://github.com/rblalock/omarchy-cursor-glass-theme.git
+cd omarchy-cursor-glass-theme
 ./install.sh
 ```
 
@@ -160,14 +160,6 @@ The original file is backed up to:
 
 ```text
 /usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.css.bak.cursor-omarchy-agent-theme
-```
-
-## For your agent
-
-Copy/paste this to a coding agent on an Omarchy machine:
-
-```text
-Install a Cursor Agents Omarchy theme patcher. Create ~/.local/bin/cursor-omarchy-agent-theme as an executable Python 3 script with commands apply [theme], grant-write-access, install-hook, status, and restore. It should read the current Omarchy theme via `omarchy theme current`, locate the theme under ~/.config/omarchy/themes or ~/.local/share/omarchy/themes, prefer colors from vscode.json or the installed VS Code/Cursor extension referenced by vscode.json, then fall back to colors.toml, waybar.css, and hyprland.conf. It should direct-patch /usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.css between clear begin/end markers with CSS targeting only Cursor Agents / Glass UI selectors like body[data-cursor-glass-mode="true"], [data-component="agent-panel"], .composer-messages-container, .ui-prompt-input__container, and .composer-human-message.standalone-glass. Back up the original file first and use setfacl to grant the current user write access so future theme changes do not need sudo. Add a hook to ~/.config/omarchy/hooks/theme-set that runs `$HOME/.local/bin/cursor-omarchy-agent-theme apply "$1" || true` with a PATH fallback. Do not edit Cursor user settings or VS Code theme settings. Provide restore to restore the backup. Tell me to fully quit and relaunch Cursor Agents after applying.
 ```
 
 ## Troubleshooting
