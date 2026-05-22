@@ -16,10 +16,11 @@ HOME = Path.home()
 THEME_ROOTS = [HOME / ".config/omarchy/themes", HOME / ".local/share/omarchy/themes"]
 CURSOR_CSS = Path("/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.css")
 BACKUP = CURSOR_CSS.with_suffix(CURSOR_CSS.suffix + ".bak.cursor-omarchy-agent-theme")
-USER_CSS = HOME / ".config/omarchy/cursor-agent.css"
 HOOK = HOME / ".config/omarchy/hooks/theme-set"
 START = "/* >>> cursor-omarchy-agent-theme >>> */"
 END = "/* <<< cursor-omarchy-agent-theme <<< */"
+# Older experimental versions installed an @import loader. Keep these markers so
+# apply/restore can remove it if present.
 LOADER_START = "/* >>> cursor-omarchy-agent-theme loader >>> */"
 LOADER_END = "/* <<< cursor-omarchy-agent-theme loader <<< */"
 
@@ -294,55 +295,19 @@ def remove_marked(text: str, start: str, end: str) -> str:
     return re.sub(re.escape(start) + r".*?" + re.escape(end) + r"\n?", "", text, flags=re.S)
 
 
-def loader_block() -> str:
-    # Must be near the top of the CSS bundle; @import is invalid after style rules.
-    return f'{LOADER_START}\n@import url("file://{USER_CSS}");\n{LOADER_END}\n'
-
-
-def install_loader(non_interactive: bool) -> None:
-    if not CURSOR_CSS.exists():
-        raise SystemExit(f"Cursor CSS not found: {CURSOR_CSS}")
-    ensure_backup(non_interactive)
-    text = CURSOR_CSS.read_text(errors="ignore")
-    text = remove_marked(text, LOADER_START, LOADER_END)
-    text = remove_marked(text, START, END)
-    insert_at = 0
-    if text.startswith("/*"):
-        end_comment = text.find("*/")
-        if end_comment != -1:
-            insert_at = end_comment + 2
-            while insert_at < len(text) and text[insert_at] in "\r\n":
-                insert_at += 1
-    patched = text[:insert_at] + "\n" + loader_block() + text[insert_at:]
-    write_root_file(CURSOR_CSS, patched, non_interactive)
-    print(f"Installed Cursor CSS loader importing {USER_CSS}")
-
-
-def generate_user_css(theme: str | None) -> None:
-    theme_name = theme or current_theme()
-    theme_dir = find_theme_dir(theme_name)
-    if not theme_dir:
-        raise SystemExit(f"Theme not found: {theme_name}")
-    USER_CSS.parent.mkdir(parents=True, exist_ok=True)
-    USER_CSS.write_text(css_for(theme_dir.name, read_palette(theme_dir)))
-    print(f"Generated {USER_CSS} from Omarchy theme '{theme_dir.name}'.")
-
-
-def loader_installed() -> bool:
-    return CURSOR_CSS.exists() and LOADER_START in CURSOR_CSS.read_text(errors="ignore")
-
-
 def grant_write_access(non_interactive: bool) -> None:
     """Allow the current user to update Cursor's CSS so Omarchy hooks can run without sudo."""
     if os.access(CURSOR_CSS, os.W_OK):
         print(f"Current user can already write {CURSOR_CSS}")
         return
+    if shutil.which("setfacl") is None:
+        raise SystemExit("setfacl is required to grant hook write access. Install the acl package, or run apply manually with sudo when needed.")
     user = os.environ.get("SUDO_USER") or os.environ.get("USER") or subprocess.check_output(["id", "-un"], text=True).strip()
     run(sudo_prefix(non_interactive) + ["setfacl", "-m", f"u:{user}:rw", str(CURSOR_CSS)])
     print(f"Granted write access on Cursor CSS to user '{user}'.")
 
 
-def apply(theme: str | None, non_interactive: bool, direct: bool = True) -> None:
+def apply(theme: str | None, non_interactive: bool) -> None:
     # Direct patch is intentional. A file:// @import loader was tested and Electron did not
     # reliably load it for Cursor Agents. Direct patching is the working path.
     theme_name = theme or current_theme()
@@ -379,15 +344,31 @@ def install_hook() -> None:
         HOOK.write_text("#!/usr/bin/env bash\n# Called with the snake-cased name of the Omarchy theme just set.\n")
         HOOK.chmod(0o755)
     text = HOOK.read_text()
-    if "cursor-omarchy-agent-theme apply" in text:
-        print("Omarchy theme hook already installed.")
-        return
-    block = """
+
+    # Remove older unmarked blocks from pre-release versions.
+    text = re.sub(
+        r"\n?# Sync Cursor Agents Glass theme to Omarchy\.\n"
+        r"if command -v cursor-omarchy-agent-theme >/dev/null 2>&1; then\n"
+        r"  cursor-omarchy-agent-theme apply \"\$1\" \|\| true\n"
+        r"fi\n?",
+        "\n",
+        text,
+    )
+
+    hook_start = "# >>> cursor-omarchy-agent-theme hook >>>"
+    hook_end = "# <<< cursor-omarchy-agent-theme hook <<<"
+    tool = HOME / ".local/bin/cursor-omarchy-agent-theme"
+    block = f"""
+{hook_start}
 # Sync Cursor Agents Glass theme to Omarchy.
-if command -v cursor-omarchy-agent-theme >/dev/null 2>&1; then
+if [ -x "{tool}" ]; then
+  "{tool}" apply "$1" || true
+elif command -v cursor-omarchy-agent-theme >/dev/null 2>&1; then
   cursor-omarchy-agent-theme apply "$1" || true
 fi
+{hook_end}
 """
+    text = remove_marked(text, hook_start, hook_end)
     marker = "# >>> omazed hook - do not edit >>>"
     if marker in text:
         text = text.replace(marker, block + "\n" + marker)
@@ -402,21 +383,18 @@ def status() -> None:
     text = CURSOR_CSS.read_text(errors="ignore") if CURSOR_CSS.exists() else ""
     print(f"Cursor CSS: {CURSOR_CSS}")
     print(f"Backup: {'yes' if BACKUP.exists() else 'no'} ({BACKUP})")
-    print(f"Loader installed: {'yes' if LOADER_START in text else 'no'}")
-    print(f"Direct patch installed: {'yes' if START in text else 'no'}")
-    print(f"User CSS: {'yes' if USER_CSS.exists() else 'no'} ({USER_CSS})")
+    print(f"Patch installed: {'yes' if START in text else 'no'}")
+    print(f"Legacy loader present: {'yes' if LOADER_START in text else 'no'}")
+    print(f"Writable by current user: {'yes' if os.access(CURSOR_CSS, os.W_OK) else 'no'}")
     print(f"Omarchy hook: {'yes' if HOOK.exists() and 'cursor-omarchy-agent-theme apply' in HOOK.read_text(errors='ignore') else 'no'} ({HOOK})")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Theme Cursor Agents from Omarchy themes")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    p_apply = sub.add_parser("apply", help="Apply theme CSS; uses user CSS if loader is installed")
-    p_apply.add_argument("theme", nargs="?")
-    p_apply.add_argument("--non-interactive", action="store_true")
-    p_apply.add_argument("--direct", action="store_true", help="Patch Cursor CSS directly instead of writing user CSS")
-    p_loader = sub.add_parser("install-loader", help="Deprecated: direct patching is used; removes old loader on next apply")
-    p_loader.add_argument("--non-interactive", action="store_true")
+    p_apply = sub.add_parser("apply", help="Patch Cursor Agents Glass CSS from an Omarchy theme")
+    p_apply.add_argument("theme", nargs="?", help="Omarchy theme name; defaults to current theme")
+    p_apply.add_argument("--non-interactive", action="store_true", help="Use sudo -n if privileges are needed")
     p_grant = sub.add_parser("grant-write-access", help="Allow theme hook to patch Cursor CSS without sudo")
     p_grant.add_argument("--non-interactive", action="store_true")
     sub.add_parser("install-hook", help="Run apply after omarchy theme set")
@@ -425,9 +403,7 @@ def main() -> int:
     sub.add_parser("status")
     args = parser.parse_args()
     if args.cmd == "apply":
-        apply(args.theme, args.non_interactive, args.direct)
-    elif args.cmd == "install-loader":
-        print("install-loader is deprecated; use apply/grant-write-access instead.")
+        apply(args.theme, args.non_interactive)
     elif args.cmd == "grant-write-access":
         grant_write_access(args.non_interactive)
     elif args.cmd == "install-hook":
