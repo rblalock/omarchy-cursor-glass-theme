@@ -1,10 +1,27 @@
 # Cursor Omarchy Agent Theme
 
-<img width="2438" height="1644" alt="screenshot-2026-05-22_08-14-07" src="https://github.com/user-attachments/assets/f93afc3f-dc3b-43eb-9a0c-a506fd99d2f5" />
-<img width="2322" height="1538" alt="screenshot-2026-05-22_08-13-33" src="https://github.com/user-attachments/assets/68634a2c-1575-43d1-a1e9-3944ac43f7f4" />
-<img width="2768" height="1674" alt="screenshot-2026-05-22_08-12-36" src="https://github.com/user-attachments/assets/d53ea1f0-82fe-4def-8063-055e9911edd8" />
-<img width="2742" height="1658" alt="screenshot-2026-05-22_08-12-11" src="https://github.com/user-attachments/assets/552f6246-fe36-44ad-84dc-e003f7d5040e" />
+A small tool that makes Cursor's new **Agents / Glass** UI follow your active Omarchy theme.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="assets/screenshots/screenshot-01.webp" alt="Cursor Agents themed with Omarchy" width="520"></td>
+    <td><img src="assets/screenshots/screenshot-02.webp" alt="Cursor Agents themed with Omarchy" width="520"></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/screenshot-03.webp" alt="Cursor Agents themed with Omarchy" width="520"></td>
+    <td><img src="assets/screenshots/screenshot-04.webp" alt="Cursor Agents themed with Omarchy" width="520"></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/screenshot-05.webp" alt="Cursor Agents themed with Omarchy" width="520"></td>
+    <td><img src="assets/screenshots/screenshot-06.webp" alt="Cursor Agents themed with Omarchy" width="520"></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/screenshot-07.webp" alt="Cursor Agents themed with Omarchy" width="520"></td>
+    <td></td>
+  </tr>
+</table>
 
 ## Why
 
