@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -49,13 +50,112 @@ def valid_hex(v: object) -> bool:
     return isinstance(v, str) and re.fullmatch(r"#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?", v) is not None
 
 
-def read_palette(theme_dir: Path) -> dict[str, str]:
+def read_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(errors="ignore"))
+    except Exception:
+        return {}
+
+
+def merge_theme_json(path: Path, seen: set[Path] | None = None) -> dict:
+    seen = seen or set()
+    path = path.resolve()
+    if path in seen or not path.exists():
+        return {}
+    seen.add(path)
+    data = read_json(path)
+    merged = {}
+    include = data.get("include")
+    if isinstance(include, str):
+        merged.update(merge_theme_json(path.parent / include, seen))
+    merged.update(data)
+    if isinstance(data.get("colors"), dict):
+        colors = dict(merged.get("colors", {})) if isinstance(merged.get("colors"), dict) else {}
+        colors.update(data["colors"])
+        merged["colors"] = colors
+    return merged
+
+
+def find_installed_vscode_theme(vscode_meta: dict) -> dict:
+    ext = vscode_meta.get("extension")
+    wanted_name = vscode_meta.get("name")
+    if not isinstance(ext, str) or not ext:
+        return {}
+    ext_slug = ext.lower()
+    roots = [HOME / ".cursor/extensions", HOME / ".vscode/extensions"]
+    for root in roots:
+        if not root.exists():
+            continue
+        for d in root.iterdir():
+            if not d.is_dir() or not d.name.lower().startswith(ext_slug):
+                continue
+            pkg = read_json(d / "package.json")
+            themes = (((pkg.get("contributes") or {}).get("themes")) or []) if isinstance(pkg, dict) else []
+            for t in themes:
+                label = t.get("label") or t.get("id")
+                if wanted_name and label != wanted_name:
+                    continue
+                rel = t.get("path")
+                if isinstance(rel, str):
+                    return merge_theme_json(d / rel)
+            # If name didn't match, fall back to the first contributed theme.
+            if themes and isinstance(themes[0].get("path"), str):
+                return merge_theme_json(d / themes[0]["path"])
+    return {}
+
+
+def vscode_palette(theme_dir: Path) -> dict[str, str]:
+    meta_path = theme_dir / "vscode.json"
+    if not meta_path.exists():
+        return {}
+    meta = read_json(meta_path)
+    data = meta if isinstance(meta.get("colors"), dict) else find_installed_vscode_theme(meta)
+    colors = data.get("colors") if isinstance(data, dict) else None
+    if not isinstance(colors, dict):
+        return {}
+
+    def color(*keys: str) -> str | None:
+        for key in keys:
+            v = colors.get(key)
+            if valid_hex(v):
+                return str(v)[:7]
+        return None
+
     p: dict[str, str] = {}
+    mapping = {
+        "background": ("editor.background", "sideBar.background", "panel.background"),
+        "foreground": ("editor.foreground", "foreground", "sideBar.foreground"),
+        "accent": ("button.background", "focusBorder", "activityBar.activeBorder", "activityBar.foreground"),
+        "cursor": ("editorCursor.foreground",),
+        "selection_background": ("editor.selectionBackground", "selection.background", "list.activeSelectionBackground"),
+        "selection_foreground": ("editor.selectionForeground", "button.foreground",),
+    }
+    for out, keys in mapping.items():
+        v = color(*keys)
+        if v:
+            p[out] = v
+    ansi = [
+        "terminal.ansiBlack", "terminal.ansiRed", "terminal.ansiGreen", "terminal.ansiYellow",
+        "terminal.ansiBlue", "terminal.ansiMagenta", "terminal.ansiCyan", "terminal.ansiWhite",
+        "terminal.ansiBrightBlack", "terminal.ansiBrightRed", "terminal.ansiBrightGreen", "terminal.ansiBrightYellow",
+        "terminal.ansiBrightBlue", "terminal.ansiBrightMagenta", "terminal.ansiBrightCyan", "terminal.ansiBrightWhite",
+    ]
+    for i, key in enumerate(ansi):
+        v = color(key)
+        if v:
+            p[f"color{i}"] = v
+    return p
+
+
+def read_palette(theme_dir: Path) -> dict[str, str]:
+    # Prefer an explicit/installed VS Code theme when the Omarchy theme provides one,
+    # then fill any missing values from Omarchy colors.toml and other theme files.
+    p: dict[str, str] = vscode_palette(theme_dir)
     colors = theme_dir / "colors.toml"
     if colors.exists():
         for k, v in tomllib.loads(colors.read_text()).items():
             if valid_hex(v):
-                p[k] = str(v)[:7]
+                p.setdefault(k, str(v)[:7])
 
     waybar = theme_dir / "waybar.css"
     if waybar.exists():

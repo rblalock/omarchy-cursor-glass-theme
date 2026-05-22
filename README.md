@@ -109,9 +109,16 @@ This is not hardcoded to Kanagawa. It supports any Omarchy theme that exists und
 ~/.local/share/omarchy/themes/<theme>
 ```
 
-It prefers `colors.toml`, and falls back to colors found in `waybar.css` and `hyprland.conf`.
+It prefers VS Code theme information when available:
 
-Best results come from themes with a `colors.toml` containing keys like:
+1. `vscode.json` with inline `colors`
+2. An installed VS Code/Cursor extension referenced by `vscode.json` (`extension` + `name`)
+3. `colors.toml`
+4. Fallback colors found in `waybar.css` and `hyprland.conf`
+
+On a typical Omarchy system, many themes include a `vscode.json`, but most of those files reference an external theme extension rather than embedding colors directly. If that extension is installed in `~/.cursor/extensions` or `~/.vscode/extensions`, this tool will read its theme JSON and use those colors first. Otherwise it falls back to Omarchy's own palette files.
+
+Best fallback results come from themes with a `colors.toml` containing keys like:
 
 ```toml
 background = "#1f1f28"
