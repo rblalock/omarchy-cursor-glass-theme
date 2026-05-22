@@ -1,0 +1,330 @@
+#!/usr/bin/env python3
+"""Theme Cursor Agents (Glass UI) from Omarchy themes."""
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+import tomllib
+from pathlib import Path
+
+HOME = Path.home()
+THEME_ROOTS = [HOME / ".config/omarchy/themes", HOME / ".local/share/omarchy/themes"]
+CURSOR_CSS = Path("/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.css")
+BACKUP = CURSOR_CSS.with_suffix(CURSOR_CSS.suffix + ".bak.cursor-omarchy-agent-theme")
+USER_CSS = HOME / ".config/omarchy/cursor-agent.css"
+HOOK = HOME / ".config/omarchy/hooks/theme-set"
+START = "/* >>> cursor-omarchy-agent-theme >>> */"
+END = "/* <<< cursor-omarchy-agent-theme <<< */"
+LOADER_START = "/* >>> cursor-omarchy-agent-theme loader >>> */"
+LOADER_END = "/* <<< cursor-omarchy-agent-theme loader <<< */"
+
+
+def run(cmd: list[str]) -> None:
+    subprocess.run(cmd, text=True, check=True)
+
+
+def slug(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+
+
+def current_theme() -> str:
+    return subprocess.check_output(["omarchy", "theme", "current"], text=True).strip()
+
+
+def find_theme_dir(name: str) -> Path | None:
+    wanted = slug(name)
+    for root in THEME_ROOTS:
+        if root.exists():
+            for d in root.iterdir():
+                if d.is_dir() and (slug(d.name) == wanted or d.name == name):
+                    return d
+    return None
+
+
+def valid_hex(v: object) -> bool:
+    return isinstance(v, str) and re.fullmatch(r"#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?", v) is not None
+
+
+def read_palette(theme_dir: Path) -> dict[str, str]:
+    p: dict[str, str] = {}
+    colors = theme_dir / "colors.toml"
+    if colors.exists():
+        for k, v in tomllib.loads(colors.read_text()).items():
+            if valid_hex(v):
+                p[k] = str(v)[:7]
+
+    waybar = theme_dir / "waybar.css"
+    if waybar.exists():
+        text = waybar.read_text(errors="ignore")
+        for key, css_key in [("background", "bg"), ("foreground", "foreground"), ("accent", "accent")]:
+            if key not in p:
+                m = re.search(rf"@define-color\s+{css_key}\s+(#[0-9a-fA-F]{{6}})", text)
+                if m:
+                    p[key] = m.group(1)
+
+    hypr = theme_dir / "hyprland.conf"
+    if hypr.exists() and "accent" not in p:
+        m = re.search(r"activeBorderColor\s*=\s*rgb\(([0-9a-fA-F]{6})\)", hypr.read_text(errors="ignore"))
+        if m:
+            p["accent"] = "#" + m.group(1)
+
+    p.setdefault("background", "#141414")
+    p.setdefault("foreground", "#e4e4e4")
+    p.setdefault("accent", p.get("color4", "#82d2ce"))
+    p.setdefault("cursor", p["accent"])
+    p.setdefault("selection_background", p["accent"])
+    p.setdefault("selection_foreground", p["background"])
+    defaults = ["#000000", "#cd3131", "#0dbc79", "#e5e510", "#2472c8", "#bc3fbc", "#11a8cd", "#e5e5e5", "#666666", "#f14c4c", "#23d18b", "#f5f543", "#3b8eea", "#d670d6", "#29b8db", "#ffffff"]
+    for i, color in enumerate(defaults):
+        p.setdefault(f"color{i}", color)
+    return p
+
+
+def hex_to_rgb(h: str) -> tuple[int, int, int]:
+    h = h.lstrip("#")[:6]
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+def mix(a: str, b: str, amount: float) -> str:
+    ar, ag, ab = hex_to_rgb(a)
+    br, bg, bb = hex_to_rgb(b)
+    return f"#{round(ar + (br-ar)*amount):02x}{round(ag + (bg-ag)*amount):02x}{round(ab + (bb-ab)*amount):02x}"
+
+
+def alpha(h: str, a: float) -> str:
+    r, g, b = hex_to_rgb(h)
+    return f"rgba({r}, {g}, {b}, {a:.3g})"
+
+
+def css_for(theme_name: str, p: dict[str, str]) -> str:
+    bg, fg, accent = p["background"], p["foreground"], p["accent"]
+    surface = mix(bg, fg, 0.06)
+    surface2 = mix(bg, fg, 0.10)
+    surface3 = mix(bg, fg, 0.14)
+    selection = p["selection_background"]
+    return f"""{START}
+/* Generated from Omarchy theme: {theme_name} */
+body[data-cursor-glass-mode="true"] {{
+  --vscode-foreground: {fg} !important;
+  --vscode-descriptionForeground: {alpha(fg, .72)} !important;
+  --vscode-editor-background: {bg} !important;
+  --vscode-sideBar-background: {surface} !important;
+  --vscode-input-background: {surface2} !important;
+  --vscode-dropdown-background: {surface2} !important;
+  --vscode-quickInput-background: {surface2} !important;
+  --vscode-list-activeSelectionBackground: {alpha(selection, .62)} !important;
+  --vscode-list-focusBackground: {alpha(selection, .42)} !important;
+  --vscode-list-hoverBackground: {alpha(fg, .08)} !important;
+  --vscode-button-background: {accent} !important;
+  --vscode-button-foreground: {p['selection_foreground']} !important;
+  --cursor-text-primary: {fg} !important;
+  --cursor-text-secondary: {alpha(fg, .74)} !important;
+  --cursor-text-tertiary: {alpha(fg, .54)} !important;
+  --cursor-text-quaternary: {alpha(fg, .36)} !important;
+  --cursor-bg-primary: {alpha(fg, .16)} !important;
+  --cursor-bg-secondary: {surface2} !important;
+  --cursor-bg-tertiary: {surface} !important;
+  --cursor-bg-quaternary: {alpha(fg, .07)} !important;
+  --cursor-bg-elevated: {surface2} !important;
+  --cursor-bg-active: {alpha(selection, .62)} !important;
+  --cursor-bg-focused: {alpha(selection, .42)} !important;
+  --cursor-stroke-primary: {alpha(accent, .38)} !important;
+  --cursor-stroke-secondary: {alpha(accent, .25)} !important;
+  --cursor-stroke-tertiary: {alpha(fg, .11)} !important;
+  --cursor-stroke-focused: {accent} !important;
+  --cursor-icon-primary: {fg} !important;
+  --cursor-icon-secondary: {alpha(fg, .72)} !important;
+  --cursor-icon-accent-primary: {accent} !important;
+  --cursor-accent: {accent} !important;
+  --cursor-blue: {p['color4']} !important;
+  --cursor-cyan: {p['color6']} !important;
+  --cursor-green: {p['color2']} !important;
+  --cursor-yellow: {p['color3']} !important;
+  --cursor-red: {p['color1']} !important;
+  --cursor-magenta: {p['color5']} !important;
+  --cursor-purple: {p['color5']} !important;
+  --glass-chat-bubble-background: {alpha(surface3, .82)} !important;
+  --glass-background: {alpha(bg, .82)} !important;
+}}
+body[data-cursor-glass-mode="true"] [data-component="agent-panel"],
+body[data-cursor-glass-mode="true"] .composer-messages-container {{ color: {fg} !important; }}
+body[data-cursor-glass-mode="true"] .ui-prompt-input__container,
+body[data-cursor-glass-mode="true"] .composer-human-message.standalone-glass {{
+  background-color: {alpha(surface2, .78)} !important;
+  border-color: {alpha(accent, .30)} !important;
+}}
+body[data-cursor-glass-mode="true"] .agent-sidebar-new-agent-button,
+body[data-cursor-glass-mode="true"] .agent-sidebar-new-cloud-agent-button,
+body[data-cursor-glass-mode="true"] .chat-title-tab-row__new-agent:hover {{ background-color: {alpha(accent, .18)} !important; }}
+{END}
+"""
+
+
+def sudo_prefix(non_interactive: bool) -> list[str]:
+    return ["sudo", "-n"] if non_interactive else ["sudo"]
+
+
+def write_root_file(path: Path, content: str, non_interactive: bool) -> None:
+    if os.access(path, os.W_OK):
+        path.write_text(content)
+        return
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(content)
+        tmp = f.name
+    try:
+        run(sudo_prefix(non_interactive) + ["cp", tmp, str(path)])
+    finally:
+        os.unlink(tmp)
+
+
+def ensure_backup(non_interactive: bool) -> None:
+    if BACKUP.exists():
+        return
+    if os.access(CURSOR_CSS.parent, os.W_OK):
+        shutil.copy2(CURSOR_CSS, BACKUP)
+    else:
+        run(sudo_prefix(non_interactive) + ["cp", str(CURSOR_CSS), str(BACKUP)])
+
+
+def remove_marked(text: str, start: str, end: str) -> str:
+    return re.sub(re.escape(start) + r".*?" + re.escape(end) + r"\n?", "", text, flags=re.S)
+
+
+def loader_block() -> str:
+    # Must be near the top of the CSS bundle; @import is invalid after style rules.
+    return f'{LOADER_START}\n@import url("file://{USER_CSS}");\n{LOADER_END}\n'
+
+
+def install_loader(non_interactive: bool) -> None:
+    if not CURSOR_CSS.exists():
+        raise SystemExit(f"Cursor CSS not found: {CURSOR_CSS}")
+    ensure_backup(non_interactive)
+    text = CURSOR_CSS.read_text(errors="ignore")
+    text = remove_marked(text, LOADER_START, LOADER_END)
+    text = remove_marked(text, START, END)
+    insert_at = 0
+    if text.startswith("/*"):
+        end_comment = text.find("*/")
+        if end_comment != -1:
+            insert_at = end_comment + 2
+            while insert_at < len(text) and text[insert_at] in "\r\n":
+                insert_at += 1
+    patched = text[:insert_at] + "\n" + loader_block() + text[insert_at:]
+    write_root_file(CURSOR_CSS, patched, non_interactive)
+    print(f"Installed Cursor CSS loader importing {USER_CSS}")
+
+
+def generate_user_css(theme: str | None) -> None:
+    theme_name = theme or current_theme()
+    theme_dir = find_theme_dir(theme_name)
+    if not theme_dir:
+        raise SystemExit(f"Theme not found: {theme_name}")
+    USER_CSS.parent.mkdir(parents=True, exist_ok=True)
+    USER_CSS.write_text(css_for(theme_dir.name, read_palette(theme_dir)))
+    print(f"Generated {USER_CSS} from Omarchy theme '{theme_dir.name}'.")
+
+
+def loader_installed() -> bool:
+    return CURSOR_CSS.exists() and LOADER_START in CURSOR_CSS.read_text(errors="ignore")
+
+
+def apply(theme: str | None, non_interactive: bool, direct: bool) -> None:
+    if not direct and loader_installed():
+        generate_user_css(theme)
+        print("Fully quit/relaunch Cursor Agents to see changes.")
+        return
+    theme_name = theme or current_theme()
+    theme_dir = find_theme_dir(theme_name)
+    if not theme_dir:
+        raise SystemExit(f"Theme not found: {theme_name}")
+    ensure_backup(non_interactive)
+    original = CURSOR_CSS.read_text(errors="ignore")
+    original = remove_marked(original, START, END)
+    block = css_for(theme_dir.name, read_palette(theme_dir))
+    write_root_file(CURSOR_CSS, original.rstrip() + "\n\n" + block.strip() + "\n", non_interactive)
+    print(f"Direct-patched Cursor Agents Glass theme from Omarchy theme '{theme_dir.name}'.")
+    print("Fully quit/relaunch Cursor Agents to see changes.")
+
+
+def restore(non_interactive: bool) -> None:
+    if BACKUP.exists():
+        if os.access(CURSOR_CSS, os.W_OK):
+            shutil.copy2(BACKUP, CURSOR_CSS)
+        else:
+            run(sudo_prefix(non_interactive) + ["cp", str(BACKUP), str(CURSOR_CSS)])
+        print("Restored Cursor CSS from backup.")
+    else:
+        text = CURSOR_CSS.read_text(errors="ignore")
+        text = remove_marked(remove_marked(text, START, END), LOADER_START, LOADER_END)
+        write_root_file(CURSOR_CSS, text, non_interactive)
+        print("Removed Cursor Agents patch/loader blocks.")
+
+
+def install_hook() -> None:
+    HOOK.parent.mkdir(parents=True, exist_ok=True)
+    if not HOOK.exists():
+        HOOK.write_text("#!/usr/bin/env bash\n# Called with the snake-cased name of the Omarchy theme just set.\n")
+        HOOK.chmod(0o755)
+    text = HOOK.read_text()
+    if "cursor-omarchy-agent-theme apply" in text:
+        print("Omarchy theme hook already installed.")
+        return
+    block = """
+# Sync Cursor Agents Glass theme to Omarchy.
+if command -v cursor-omarchy-agent-theme >/dev/null 2>&1; then
+  cursor-omarchy-agent-theme apply "$1" || true
+fi
+"""
+    marker = "# >>> omazed hook - do not edit >>>"
+    if marker in text:
+        text = text.replace(marker, block + "\n" + marker)
+    else:
+        text = text.rstrip() + "\n" + block
+    HOOK.write_text(text)
+    HOOK.chmod(0o755)
+    print(f"Installed Omarchy theme hook in {HOOK}")
+
+
+def status() -> None:
+    text = CURSOR_CSS.read_text(errors="ignore") if CURSOR_CSS.exists() else ""
+    print(f"Cursor CSS: {CURSOR_CSS}")
+    print(f"Backup: {'yes' if BACKUP.exists() else 'no'} ({BACKUP})")
+    print(f"Loader installed: {'yes' if LOADER_START in text else 'no'}")
+    print(f"Direct patch installed: {'yes' if START in text else 'no'}")
+    print(f"User CSS: {'yes' if USER_CSS.exists() else 'no'} ({USER_CSS})")
+    print(f"Omarchy hook: {'yes' if HOOK.exists() and 'cursor-omarchy-agent-theme apply' in HOOK.read_text(errors='ignore') else 'no'} ({HOOK})")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Theme Cursor Agents from Omarchy themes")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    p_apply = sub.add_parser("apply", help="Apply theme CSS; uses user CSS if loader is installed")
+    p_apply.add_argument("theme", nargs="?")
+    p_apply.add_argument("--non-interactive", action="store_true")
+    p_apply.add_argument("--direct", action="store_true", help="Patch Cursor CSS directly instead of writing user CSS")
+    p_loader = sub.add_parser("install-loader", help="Install one-time Cursor CSS @import loader")
+    p_loader.add_argument("--non-interactive", action="store_true")
+    sub.add_parser("install-hook", help="Run apply after omarchy theme set")
+    p_restore = sub.add_parser("restore", help="Restore Cursor CSS from backup")
+    p_restore.add_argument("--non-interactive", action="store_true")
+    sub.add_parser("status")
+    args = parser.parse_args()
+    if args.cmd == "apply":
+        apply(args.theme, args.non_interactive, args.direct)
+    elif args.cmd == "install-loader":
+        install_loader(args.non_interactive)
+    elif args.cmd == "install-hook":
+        install_hook()
+    elif args.cmd == "restore":
+        restore(args.non_interactive)
+    elif args.cmd == "status":
+        status()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
